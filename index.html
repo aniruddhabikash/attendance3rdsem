@@ -287,6 +287,58 @@ async function cloudReady(){
   if(!r.ok) throw new Error("Supabase connection failed ("+r.status+")");
   return true;
 }
+
+async function loadCloud(){
+  if(!state.user) return;
+
+  // Load attendance belonging only to the signed-in user.
+  const rows = await api(
+    "/attendance?select=timetable_key,class_date,attended&user_id=eq."+encodeURIComponent(state.user.id)
+  );
+
+  const merged = {...state.attendance};
+  for(const row of (rows||[])){
+    if(!row.timetable_key || !row.class_date) continue;
+    merged[row.timetable_key+"|"+row.class_date] = !!row.attended;
+  }
+  state.attendance = merged;
+
+  // Keep profile preferences in Supabase Auth user metadata so no extra
+  // database table is required for nickname/settings synchronization.
+  const meta = state.user.user_metadata || {};
+  state.profile = {
+    ...state.profile,
+    nickname: meta.nickname || state.profile.nickname || "Student",
+    attendance_target: Number(meta.attendance_target || state.profile.attendance_target || 75),
+    semester_start: meta.semester_start || state.profile.semester_start || "2026-07-20",
+    semester_end: meta.semester_end || state.profile.semester_end || "2026-12-15"
+  };
+
+  saveLocal();
+  $("userName").textContent = state.profile.nickname || "Student";
+  setSync("Synced");
+}
+
+async function saveProfile(){
+  if(!state.user) throw new Error("No signed-in user.");
+
+  const {data,error} = await sb.auth.updateUser({
+    data:{
+      nickname: state.profile.nickname || "Student",
+      attendance_target: Number(state.profile.attendance_target || 75),
+      semester_start: state.profile.semester_start,
+      semester_end: state.profile.semester_end
+    }
+  });
+
+  if(error) throw error;
+
+  if(data?.user){
+    state.user = data.user;
+    state.session = state.session || (await sb.auth.getSession()).data.session;
+  }
+  setSync("Synced");
+}
 function saveLocal(){localStorage.setItem(STORAGE,JSON.stringify({attendance:state.attendance,profile:state.profile,theme:state.theme}))}
 function loadLocal(){
   try{
@@ -437,8 +489,14 @@ async function boot(){
   }
 }
 sb.auth.onAuthStateChange((event,session)=>{
-  if(session){state.session=session;state.user=session.user}
-  if(event==="SIGNED_OUT"){state.session=null;state.user=null}
+  if(session){
+    state.session=session;
+    state.user=session.user;
+  }
+  if(event==="SIGNED_OUT"){
+    state.session=null;
+    state.user=null;
+  }
 });
 setInterval(()=>{if(state.user){const d=todayIST();if(state._lastDay!==d){state._lastDay=d;render()}else if(state.page==="dashboard")renderDashboard()}},30000);
 boot();
