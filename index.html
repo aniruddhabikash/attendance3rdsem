@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d15">
+<title>ClassTrack — Attendance, simplified.</title>
+<style>
+:root{--bg:#f4f6fb;--ink:#151827;--muted:#687087;--glass:rgba(255,255,255,.68);--line:rgba(30,36,60,.10);--accent:#6758e9;--accent2:#8b63f7;--green:#18a878;--red:#e55c69;--amber:#d9962f;--shadow:0 24px 70px rgba(30,36,80,.12)}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg)}
+body.dark{--bg:#080b13;--ink:#f5f6ff;--muted:#9ca5bd;--glass:rgba(19,24,38,.72);--line:rgba(255,255,255,.09);--shadow:0 30px 80px rgba(0,0,0,.38)}
+body:before,body:after{content:"";position:fixed;z-index:-2;border-radius:48% 52% 43% 57%;filter:blur(70px);opacity:.22;pointer-events:none}
+body:before{width:55vw;height:55vw;background:linear-gradient(135deg,#765cff,#5db4ff);left:-18vw;top:-20vw;animation:blob 20s ease-in-out infinite alternate}
+body:after{width:48vw;height:48vw;background:linear-gradient(135deg,#9b6bff,#55d7b0);right:-16vw;bottom:-18vw;animation:blob 24s ease-in-out infinite alternate-reverse}
+@keyframes blob{0%{transform:translate3d(0,0,0) scale(1);border-radius:48% 52% 43% 57%}50%{transform:translate3d(7vw,3vh,0) scale(1.13);border-radius:61% 39% 55% 45%}100%{transform:translate3d(-2vw,7vh,0) scale(.95);border-radius:37% 63% 46% 54%}}
+button,input{font:inherit}button{cursor:pointer}.hidden{display:none!important}
+.app{min-height:100vh;padding:16px}.topbar{height:68px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(24px);border-radius:24px;box-shadow:var(--shadow);position:sticky;top:12px;z-index:20}
+.brand{display:flex;align-items:center;gap:12px;font-weight:800}.logo{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 10px 25px rgba(103,88,233,.3)}
+.top-actions{display:flex;gap:8px;align-items:center}.pill,.iconbtn,.navbtn{border:1px solid var(--line);background:rgba(255,255,255,.06);color:inherit;border-radius:14px;padding:10px 13px}.iconbtn{width:42px;height:42px;padding:0}.sync{font-size:13px;color:var(--muted);display:flex;gap:7px;align-items:center}.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(24,168,120,.1)}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:18px;max-width:1500px;margin:18px auto}.sidebar{padding:14px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(24px);border-radius:26px;box-shadow:var(--shadow);height:max-content;position:sticky;top:102px}.nav{display:grid;gap:7px}.navbtn{text-align:left;border-color:transparent;background:transparent;color:var(--muted);font-weight:700}.navbtn.active,.navbtn:hover{background:rgba(103,88,233,.12);color:var(--accent)}.side-note{margin-top:24px;padding:14px;border-top:1px solid var(--line);font-size:12px;line-height:1.65;color:var(--muted)}
+main{min-width:0}.page{display:none;animation:fade .25s ease}.page.active{display:block}@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.hero{display:flex;justify-content:space-between;gap:20px;align-items:end;margin:20px 4px 18px}.eyebrow{color:var(--accent);font-weight:800;margin-bottom:8px}.hero h1{font-size:clamp(34px,5vw,60px);line-height:.98;margin:0 0 12px;letter-spacing:-.045em}.hero p{margin:0;color:var(--muted);font-size:16px}.datebadge{padding:12px 15px;border:1px solid var(--line);background:var(--glass);border-radius:16px;color:var(--muted);white-space:nowrap}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(24px);border-radius:24px;box-shadow:var(--shadow);padding:20px}.stat .label{font-size:13px;color:var(--muted)}.stat .big{font-size:34px;font-weight:850;margin:10px 0 3px;letter-spacing:-.04em}.sub{font-size:12px;color:var(--muted)}
+.health{margin:14px 0;border-left:3px solid var(--green)}.health.bad{border-left-color:var(--red)}.health.warn{border-left-color:var(--amber)}
+.sectionhead{display:flex;align-items:center;justify-content:space-between;margin:26px 2px 12px}.sectionhead h2{margin:0;font-size:22px}.classes{display:grid;grid-template-columns:1fr 1fr;gap:12px}.classcard{display:grid;grid-template-columns:90px 1fr auto;gap:15px;align-items:center;padding:17px;border:1px solid var(--line);background:var(--glass);border-radius:22px}.time{font-size:20px;font-weight:850}.time small{display:block;color:var(--muted);font-size:12px;font-weight:600;margin-top:4px}.classinfo h3{margin:0 0 5px;font-size:16px}.classinfo p{margin:0;color:var(--muted);font-size:12px}.tag{display:inline-block;font-size:10px;font-weight:900;letter-spacing:.08em;padding:5px 8px;border-radius:8px;background:rgba(103,88,233,.12);color:var(--accent);margin-top:7px}.attbtn{border:1px solid rgba(24,168,120,.3);background:rgba(24,168,120,.08);color:var(--green);padding:10px 13px;border-radius:13px;font-weight:800;transition:.18s}.attbtn:hover{transform:translateY(-1px)}.attbtn.marked{background:var(--green);color:#fff;border-color:var(--green)}
+.twocol{display:grid;grid-template-columns:1.4fr .8fr;gap:14px}.list{display:grid;gap:10px}.event{padding:14px;border:1px solid var(--line);border-radius:17px;background:rgba(255,255,255,.04)}.event strong{display:block}.event span{font-size:12px;color:var(--muted)}
+.controls{display:flex;gap:8px;flex-wrap:wrap}.filter,.input,.select{border:1px solid var(--line);background:var(--glass);color:inherit;border-radius:13px;padding:11px 13px;outline:none}.filter.active{background:rgba(103,88,233,.13);color:var(--accent);border-color:rgba(103,88,233,.2)}
+.subjectgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.subject .row{display:flex;justify-content:space-between;gap:10px}.ring{font-size:30px;font-weight:850}.bar{height:8px;background:rgba(127,135,160,.16);border-radius:20px;overflow:hidden;margin:15px 0 8px}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:20px}.safe{color:var(--green)}.risk{color:var(--red)}.warnc{color:var(--amber)}
+.tablewrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:12px;text-align:left;border-bottom:1px solid var(--line);font-size:13px}.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.calcell{min-height:85px;padding:9px;border:1px solid var(--line);border-radius:14px;background:var(--glass);cursor:pointer}.calcell.muted{opacity:.35}.calcell.today{outline:2px solid var(--accent)}.calcell .num{font-weight:800}.caldot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent);margin:5px 3px 0 0}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{display:grid;gap:6px}.field label{font-size:12px;color:var(--muted);font-weight:700}.primary{border:0;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;padding:12px 16px;border-radius:14px;font-weight:850}.danger{border:1px solid rgba(229,92,105,.3);background:rgba(229,92,105,.08);color:var(--red);padding:11px 14px;border-radius:13px;font-weight:800}
+.auth{min-height:100vh;display:grid;place-items:center;padding:20px}.authbox{width:min(440px,100%);padding:28px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(28px);border-radius:30px;box-shadow:var(--shadow)}.authbrand{display:flex;gap:12px;align-items:center;font-weight:850;font-size:20px}.auth h1{font-size:36px;margin:28px 0 8px}.auth p{color:var(--muted)}.auth .field{margin:14px 0}.auth input{width:100%;padding:14px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.55);color:#151827}.dark .auth input{background:rgba(255,255,255,.05);color:#fff}.authswitch{display:flex;margin:20px 0 14px;padding:4px;background:rgba(127,135,160,.1);border-radius:14px}.authswitch button{flex:1;border:0;background:transparent;padding:10px;border-radius:11px;font-weight:800;color:var(--muted)}.authswitch button.active{background:var(--glass);color:var(--accent);box-shadow:0 5px 18px rgba(0,0,0,.08)}.auth .primary{width:100%;margin-top:5px}.linkbtn{border:0;background:none;color:var(--accent);font-weight:800;margin-top:12px}.message{margin-top:12px;font-size:13px;color:var(--muted);min-height:18px;line-height:1.45}.message.error{color:var(--red)}.mobileNav{display:none}.toast{position:fixed;right:20px;bottom:20px;z-index:100;padding:14px 17px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(22px);border-radius:16px;box-shadow:var(--shadow);font-weight:750}.footer{text-align:center;color:var(--muted);font-size:11px;padding:38px 10px 12px}
+@media(max-width:1000px){.grid4{grid-template-columns:1fr 1fr}.classes,.subjectgrid,.twocol{grid-template-columns:1fr}.sidebar{display:none}.layout{display:block}.mobileNav{display:flex;position:fixed;bottom:10px;left:10px;right:10px;z-index:30;padding:7px;border:1px solid var(--line);background:var(--glass);backdrop-filter:blur(24px);border-radius:20px;justify-content:space-around}.mobileNav button{border:0;background:none;color:var(--muted);padding:10px;font-size:11px;font-weight:800}.mobileNav button.active{color:var(--accent)}.app{padding-bottom:85px}}
+@media(max-width:600px){.topbar{height:60px;border-radius:19px}.topbar .sync{display:none}.hero{display:block}.datebadge{display:inline-block;margin-top:15px}.grid4{grid-template-columns:1fr 1fr}.card{padding:16px;border-radius:20px}.stat .big{font-size:27px}.classcard{grid-template-columns:72px 1fr;gap:10px}.classcard .attbtn{grid-column:1/-1;width:100%}.time{font-size:17px}.formgrid{grid-template-columns:1fr}.hero h1{font-size:38px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+
+/* ===== ClassTrack Liquid Glass Upgrade ===== */
+html{scroll-behavior:smooth}
+body{overflow-x:hidden}
+body:before,body:after{filter:blur(90px);opacity:.28;will-change:transform;mix-blend-mode:screen}
+body:before{animation:liquidA 18s cubic-bezier(.45,.05,.55,.95) infinite alternate}
+body:after{animation:liquidB 22s cubic-bezier(.45,.05,.55,.95) infinite alternate}
+@keyframes liquidA{
+  0%{transform:translate3d(-3vw,-2vh,0) scale(.95) rotate(0deg)}
+  35%{transform:translate3d(12vw,5vh,0) scale(1.12) rotate(35deg)}
+  70%{transform:translate3d(4vw,16vh,0) scale(1.03) rotate(80deg)}
+  100%{transform:translate3d(-8vw,8vh,0) scale(1.16) rotate(125deg)}
+}
+@keyframes liquidB{
+  0%{transform:translate3d(4vw,6vh,0) scale(1.05) rotate(0deg)}
+  40%{transform:translate3d(-10vw,-4vh,0) scale(.92) rotate(-35deg)}
+  75%{transform:translate3d(-3vw,-14vh,0) scale(1.12) rotate(-75deg)}
+  100%{transform:translate3d(11vw,-6vh,0) scale(1) rotate(-120deg)}
+}
+.topbar,.sidebar,.card,.datebadge,.pill,.iconbtn,.filter,.input,.select,.classcard,.calcell,.event,.mobileNav,.authbox{
+  background:
+    linear-gradient(135deg,rgba(255,255,255,.15),rgba(255,255,255,.045) 42%,rgba(255,255,255,.08)),
+    var(--glass);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.22),
+    inset 0 -1px 0 rgba(255,255,255,.04),
+    0 22px 65px rgba(16,20,45,.11);
+}
+.dark .topbar,.dark .sidebar,.dark .card,.dark .datebadge,.dark .pill,.dark .iconbtn,.dark .filter,.dark .input,.dark .select,.dark .classcard,.dark .calcell,.dark .event,.dark .mobileNav,.dark .authbox{
+  background:
+    linear-gradient(135deg,rgba(255,255,255,.075),rgba(255,255,255,.018) 45%,rgba(255,255,255,.045)),
+    var(--glass);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.11),
+    inset 0 -1px 0 rgba(255,255,255,.025),
+    0 26px 80px rgba(0,0,0,.25);
+}
+.topbar{backdrop-filter:blur(32px) saturate(145%);-webkit-backdrop-filter:blur(32px) saturate(145%)}
+.sidebar,.card,.authbox,.mobileNav,.datebadge,.classcard,.calcell,.event{backdrop-filter:blur(28px) saturate(135%);-webkit-backdrop-filter:blur(28px) saturate(135%)}
+.logo{position:relative;overflow:hidden}
+.logo:after{content:"";position:absolute;inset:-60% -20%;background:linear-gradient(105deg,transparent 38%,rgba(255,255,255,.55) 49%,transparent 60%);transform:translateX(-80%) rotate(8deg);animation:shine 5.5s ease-in-out infinite}
+@keyframes shine{0%,55%{transform:translateX(-90%) rotate(8deg)}78%,100%{transform:translateX(90%) rotate(8deg)}}
+.card,.classcard,.event,.calcell,.navbtn,.attbtn,.primary,.filter,.iconbtn,.pill,.mobileNav button{transition:transform .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s ease,background .28s ease,border-color .28s ease}
+.card:hover,.classcard:hover,.event:hover{transform:translateY(-3px);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 30px 80px rgba(30,36,80,.15)}
+.dark .card:hover,.dark .classcard:hover,.dark .event:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 30px 85px rgba(0,0,0,.32)}
+.primary:hover,.attbtn:hover,.filter:hover,.iconbtn:hover,.pill:hover{transform:translateY(-2px)}
+.primary:active,.attbtn:active,.filter:active,.iconbtn:active,.pill:active{transform:scale(.97)}
+.attbtn:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
+.page{animation:pageIn .42s cubic-bezier(.2,.75,.2,1)}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px) scale(.992);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
+.hero h1{animation:heroIn .6s cubic-bezier(.2,.8,.2,1)}
+@keyframes heroIn{from{opacity:0;transform:translateY(12px);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+.stat{position:relative;overflow:hidden}
+.stat:after{content:"";position:absolute;width:130px;height:130px;border-radius:50%;right:-70px;top:-70px;background:radial-gradient(circle,rgba(125,102,255,.18),transparent 68%);pointer-events:none}
+.progress-ring{width:128px;height:128px;border-radius:50%;display:grid;place-items:center;position:relative;flex:0 0 auto}
+.progress-ring:before{content:"";position:absolute;inset:10px;border-radius:50%;background:var(--glass);box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.progress-ring .ring-content{position:relative;z-index:1;text-align:center}
+.progress-ring .ring-value{font-size:26px;font-weight:900;letter-spacing:-.04em}
+.progress-ring .ring-label{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+.analytics-summary{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.analytics-summary .summary-copy{flex:1;min-width:200px}
+.datepicker-card{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.datepicker-card input{min-width:180px}
+.history-note{font-size:12px;color:var(--muted);padding:10px 0 0}
+.event.exam{border-left:3px solid var(--red)}
+.event.assessment{border-left:3px solid var(--amber)}
+.event.holiday{border-left:3px solid var(--green)}
+.event.placement{border-left:3px solid var(--accent)}
+@media(prefers-reduced-motion:reduce){
+ body:before,body:after,.logo:after,.page,.hero h1{animation:none!important}
+ .card,.classcard,.event,.calcell,.navbtn,.attbtn,.primary,.filter,.iconbtn,.pill{transition:none!important}
+}
+
+</style>
+</head>
+<body>
+<div id="authView" class="auth">
+  <section class="authbox">
+    <div class="authbrand"><div class="logo">✓</div><span>ClassTrack</span></div>
+    <h1 id="authTitle">Welcome back.</h1>
+    <p id="authSub">Sign in to keep your attendance synchronized across devices.</p>
+    <div class="authswitch"><button id="loginTab" class="active">Login</button><button id="signupTab">Create account</button></div>
+    <form id="authForm">
+      <div class="field hidden" id="nickField"><label>Nickname</label><input id="nickname" autocomplete="nickname" placeholder="What should we call you?"></div>
+      <div class="field"><label>Email</label><input id="email" type="email" autocomplete="email" required placeholder="you@example.com"></div>
+      <div class="field"><label>Password</label><input id="password" type="password" autocomplete="current-password" required minlength="6" placeholder="At least 6 characters"></div>
+      <div class="field hidden" id="confirmField"><label>Confirm password</label><input id="confirm" type="password" autocomplete="new-password" minlength="6"></div>
+      <button class="primary" id="authSubmit" type="submit">Login</button>
+    </form>
+    <button class="linkbtn" id="forgot">Forgot password?</button>
+    <div class="message" id="authMsg">Connecting to secure cloud authentication…</div>
+  </section>
+</div>
+
+<div id="appView" class="app hidden">
+<header class="topbar">
+  <div class="brand"><div class="logo">✓</div><span>ClassTrack</span></div>
+  <div class="top-actions"><div class="sync"><i class="dot" id="syncDot"></i><span id="syncText">Synced</span></div><button class="pill" id="userName">Student</button><button class="iconbtn" id="themeBtn" aria-label="Toggle theme">◐</button><button class="iconbtn" id="logoutBtn" aria-label="Log out">↪</button></div>
+</header>
+<div class="layout">
+<aside class="sidebar">
+<nav class="nav" id="sideNav">
+<button class="navbtn active" data-page="dashboard">⌂ &nbsp; Dashboard</button>
+<button class="navbtn" data-page="timetable">▦ &nbsp; Timetable</button>
+<button class="navbtn" data-page="attendance">✓ &nbsp; Attendance</button>
+<button class="navbtn" data-page="calendar">□ &nbsp; Calendar</button>
+<button class="navbtn" data-page="analytics">◔ &nbsp; Analytics</button>
+<button class="navbtn" data-page="leaderboard">♛ &nbsp; Leaderboard</button>
+<button class="navbtn" data-page="settings">⚙ &nbsp; Settings</button>
+</nav>
+<div class="side-note"><b>ClassTrack</b><br>Attendance, simplified.<br><br>Cloud-first, student-focused.<br><br>Semester: 20 Jul — 15 Dec 2026</div>
+</aside>
+<main>
+<section id="page-dashboard" class="page active"></section>
+<section id="page-timetable" class="page"></section>
+<section id="page-attendance" class="page"></section>
+<section id="page-calendar" class="page"></section>
+<section id="page-analytics" class="page"></section>
+<section id="page-leaderboard" class="page"></section>
+<section id="page-settings" class="page"></section>
+<div class="footer">© 2026 ClassTrack · All rights reserved · Made with care by Aniruddha · ClassTrack.</div>
+</main></div>
+<nav class="mobileNav" id="mobileNav">
+<button data-page="dashboard">⌂<br>Home</button><button data-page="timetable">▦<br>Timetable</button><button data-page="attendance">✓<br>Attendance</button><button data-page="calendar">□<br>Calendar</button><button data-page="analytics">◔<br>Analytics</button><button data-page="settings">⚙<br>Settings</button>
+</nav>
+</div>
+<div id="toast" class="toast hidden"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(() => {
+"use strict";
+const SUPABASE_URL="https://zzyukikiixrqqvtatffo.supabase.co";
+const KEY="sb_publishable__Wql657wWJdyu5Y2yeQQ_Q_jdze0zKQ";
+const STORAGE="classtrack_stable_v3"; const OLD_STORAGE="classtrack_stable_v2";
+const { createClient } = window.supabase;
+const sb = createClient(SUPABASE_URL, KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+});
+const subjects=[
+["BCST2101","Formal Language and Automata Theory","THEORY","Dr. Chayanika Sarmah","B403"],
+["BCST2102","Computer Organization & Architecture","THEORY","Ms. Anindita Das","B403"],
+["BCST2103","Object Oriented Programming","THEORY","Ms. Bornali Baruah","B403"],
+["BCST2104","Computational Statistics","THEORY","Dr. Barenya Bikash Hazarika","B403"],
+["BCST2105","Software Engineering","THEORY","Ms. Eirene Barua","B403"],
+["BCST2106","Indian Constitution","THEORY","Dr. Dipjyoti Nath","B403"],
+["UBP2109","PDP","THEORY","Mr. Rituraj Das / Mr. Gaurab Bhagawati","B403"],
+["BCST2103-L","Object Oriented Programming Lab","LAB","Ms. Bornali Baruah / Mr. Bharat Narah","B523"],
+["BCST2102-L","Computer Organization & Architecture Lab","LAB","Ms. Anindita Das","B525"],
+["BCST2105-L","Software Engineering Lab","LAB","Ms. Eirene Barua","B527"],
+["BCST2104-L","Computational Statistics Lab","LAB","Dr. Barenya Bikash Hazarika / Mr. Soraisam Gobin Kr. Singh","B517"]
+].map(x=>({id:x[0],name:x[1],type:x[2],faculty:x[3],room:x[4]}));
+const officialTT=[
+[1,"BCST2101","09:00","10:00"],[1,"BCST2106","10:00","11:00"],[1,"UBP2109","11:00","12:00"],[1,"BCST2105","13:00","14:00"],[1,"BCST2103-L","14:00","16:00"],
+[2,"BCST2102","09:00","10:00"],[2,"BCST2105","10:00","11:00"],[2,"BCST2103","11:00","12:00"],[2,"UBP2109","13:00","14:00"],[2,"BCST2106","14:00","15:00"],[2,"UBP2109","15:00","16:00"],
+[3,"BCST2103","09:00","10:00"],[3,"BCST2104","10:00","11:00"],[3,"UBP2109","11:00","12:00"],[3,"BCST2105","13:00","14:00"],[3,"BCST2102-L","14:00","16:00"],
+[4,"BCST2101","09:00","10:00"],[4,"BCST2104-L","10:00","12:00"],[4,"BCST2104","13:00","14:00"],[4,"BCST2103","14:00","15:00"],[4,"BCST2102","15:00","16:00"],
+[5,"BCST2102","09:00","10:00"],[5,"BCST2104","10:00","11:00"],[5,"BCST2101","11:00","12:00"],[5,"BCST2106","13:00","14:00"],[5,"BCST2105-L","14:00","16:00"],
+[6,"BCST2105","10:00","11:00"]
+].map((x,i)=>({id:i+1,weekday:x[0],subject_id:x[1],start_time:x[2],end_time:x[3]}));
+const events=[
+["2026-08-08","Expert Lecture by Eminent Resource Person","Academic"],["2026-08-12","Assignment Submission – I","Assessment"],["2026-08-15","Independence Day Celebration","Holiday"],["2026-08-22","Attendance Monitoring – I","Academic"],["2026-08-25","Parent Mentoring Interaction","Academic"],["2026-08-30","Resume Building Session","Placement"],["2026-09-05","Teachers’ Day Celebration","Academic"],["2026-09-11","Quiz 1","Assessment"],["2026-09-15","Engineers’ Day Celebration","Academic"],["2026-09-16","Sessional 1","Assessment"],["2026-09-24","Aptitude Training Session – I","Placement"],["2026-09-25","Technical Seminar by Industry Expert","Academic"],["2026-09-28","Project Review – I","Assessment"],["2026-10-01","Research Presentation","Assessment"],["2026-10-05","Hackathon / Innovation Challenge","Academic"],["2026-10-10","Workshop on Cloud Computing","Academic"],["2026-10-12","Quiz 2","Assessment"],["2026-10-22","Sessional II","Assessment"],["2026-10-23","Alumni Interaction Session","Placement"],["2026-11-01","Attendance Monitoring – II","Academic"],["2026-11-02","Internal Assessment – II","Assessment"],["2026-11-05","Placement Orientation Program","Placement"],["2026-11-09","Mock Interview Session","Placement"],["2026-11-10","Skill Test Evaluation","Assessment"],["2026-11-14","Mini Project Exhibition","Academic"],["2026-11-16","Practical Exam","Exam"],["2026-11-20","Last Day of Classes","Academic"],["2026-11-23","Syllabus Completion Review","Academic"],["2026-11-25","End-Semester Theory Examination","Exam"],["2026-12-15","End-Semester Examination – Final Day","Exam"]
+].map(x=>({date:x[0],title:x[1],type:x[2]}));
+const holidays=[{date:"2026-08-15",title:"Independence Day"}];
+const exams=[{title:"End-Semester Theory Examination",start_date:"2026-11-25",end_date:"2026-12-15"}];
+
+let state={session:null,user:null,profile:{nickname:"Student",attendance_target:75,semester_start:"2026-07-20",semester_end:"2026-12-15"},attendance:{},theme:localStorage.getItem("ct_theme")||"dark",page:"dashboard",filter:"ALL",month:new Date().getMonth(),year:new Date().getFullYear()};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+function toast(msg,bad=false){const t=$("toast");t.textContent=msg;t.style.borderColor=bad?"rgba(229,92,105,.45)":"rgba(24,168,120,.35)";t.classList.remove("hidden");clearTimeout(window._toast);window._toast=setTimeout(()=>t.classList.add("hidden"),3000)}
+function setSync(text,bad=false){$("syncText").textContent=text;$("syncDot").style.background=bad?"#e55c69":"#18a878"}
+function todayIST(){return new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Kolkata",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date())}
+function dateObj(s){const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
+function iso(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function fmtDate(s,opt={weekday:"long",month:"long",day:"numeric"}){return new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",...opt}).format(dateObj(s))}
+function greeting(){const h=Number(new Intl.DateTimeFormat("en-IN",{timeZone:"Asia/Kolkata",hour:"2-digit",hour12:false}).format(new Date()));return h<5?"Good night":h<12?"Good morning":h<17?"Good afternoon":h<21?"Good evening":"Good night"}
+function subById(id){return subjects.find(s=>s.id===id)}
+function ttForDate(d){const wd=dateObj(d).getDay();return officialTT.filter(x=>x.weekday===wd).map(x=>({...x,subject:subById(x.subject_id)}))}
+function key(c,d){return `${c.subject_id}|${c.start_time}|${c.end_time}|${d}`}
+function inSemester(d){return d>=state.profile.semester_start&&d<=state.profile.semester_end}
+function isFuture(d){return d>todayIST()}
+function holiday(d){return holidays.find(h=>h.date===d)}
+function scheduledHeldThroughToday(){
+  const today=todayIST();
+  const end=today<state.profile.semester_end?today:state.profile.semester_end;
+  if(end<state.profile.semester_start)return 0;
+  let held=0;
+  const start=dateObj(state.profile.semester_start),finish=dateObj(end);
+  for(let d=new Date(start);d<=finish;d.setDate(d.getDate()+1)){
+    const s=iso(d);
+    if(holiday(s))continue;
+    held+=ttForDate(s).length;
+  }
+  return held;
+}
+function scheduledSubjectHeldThroughToday(subjectId){
+  const today=todayIST();
+  const end=today<state.profile.semester_end?today:state.profile.semester_end;
+  if(end<state.profile.semester_start)return 0;
+  let held=0;
+  const start=dateObj(state.profile.semester_start),finish=dateObj(end);
+  for(let d=new Date(start);d<=finish;d.setDate(d.getDate()+1)){
+    const s=iso(d);
+    if(holiday(s))continue;
+    held+=ttForDate(s).filter(c=>c.subject_id===subjectId).length;
+  }
+  return held;
+}
+function recordedStats(){
+  let recorded=0,attended=0;
+  for(const v of Object.values(state.attendance)){
+    recorded++;
+    if(v)attended++;
+  }
+  return {recorded,attended};
+}
+function pct(){
+  const held=scheduledHeldThroughToday();
+  const att=Object.values(state.attendance).filter(Boolean).length;
+  return held?Math.min(100,att/held*100):0;
+}
+function statsForSubject(id){
+  const held=scheduledSubjectHeldThroughToday(id);
+  let att=0,recorded=0;
+  for(const [k,v] of Object.entries(state.attendance)){
+    if(k.startsWith(id+"|")){
+      recorded++;
+      if(v)att++;
+    }
+  }
+  return {held,att,recorded,pct:held?Math.min(100,att/held*100):0};
+}
+function classesHeldBeforeToday(){return scheduledHeldThroughToday()}
+function requiredToReach(att,held,target){if(att/Math.max(1,held)>=target/100)return 0;let n=0;while(n<1000 && (att+n)/(held+n)<target/100)n++;return n}
+function canMiss(att,held,target){let n=0;while(n<1000 && (att/(held+n+1))>=target/100)n++;return n}
+function upcoming(){const t=todayIST();return [...events.filter(e=>e.date>=t),...exams.filter(e=>e.start_date>=t).map(e=>({date:e.start_date,title:e.title,type:"Exam"}))].sort((a,b)=>a.date.localeCompare(b.date))[0]}
+async function api(path,opts={}){
+  const headers={"Content-Type":"application/json",...(opts.headers||{})};
+  if(opts.body && typeof opts.body!=="string") opts.body=JSON.stringify(opts.body);
+  const {data:{session}}=await sb.auth.getSession();
+  if(session?.access_token) headers.Authorization="Bearer "+session.access_token;
+  const r=await fetch(SUPABASE_URL+"/rest/v1"+path,{...opts,headers:{apikey:KEY,...headers}});
+  const text=await r.text();
+  let data; try{data=text?JSON.parse(text):null}catch{data=text}
+  if(!r.ok) throw new Error(data?.message||data?.error_description||data?.hint||text||`HTTP ${r.status}`);
+  return data;
+}
+async function cloudReady(){
+  const r=await fetch(SUPABASE_URL+"/auth/v1/settings",{headers:{apikey:KEY}});
+  if(!r.ok) throw new Error("Supabase connection failed ("+r.status+")");
+  return true;
+}
+function saveLocal(){localStorage.setItem(STORAGE,JSON.stringify({attendance:state.attendance,profile:state.profile,theme:state.theme}))}
+function loadLocal(){
+  try{
+    let raw=localStorage.getItem(STORAGE);
+    if(!raw){
+      const old=localStorage.getItem(OLD_STORAGE);
+      if(old){localStorage.setItem(STORAGE,old);raw=old;}
+    }
+    const x=JSON.parse(raw||"{}");
+    if(x.attendance)state.attendance=x.attendance;
+    if(x.profile)state.profile={...state.profile,...x.profile};
+  }catch(e){console.warn("ClassTrack local migration failed:",e);}
+}
+async function cloudAttendance(c,d,value){
+  const k=c.subject_id+"|"+c.start_time+"|"+c.end_time;
+  setSync("Syncing…");
+  await api("/attendance?on_conflict=user_id,timetable_key,class_date",{
+    method:"POST",
+    headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},
+    body:{
+      user_id:state.user.id,
+      timetable_key:k,
+      class_date:d,
+      attended:!!value
+    }
+  });
+  setSync("Synced");
+}
+async function toggle(c,d){if(!state.user)return;if(!inSemester(d)){toast("This date is outside the semester.",true);return}if(isFuture(d)){toast("Future classes cannot be marked.",true);return}if(holiday(d)){toast("Holiday — No classes.",true);return}const k=key(c,d),next=!state.attendance[k];state.attendance[k]=next;saveLocal();render();toast(next?`✓ ${c.subject.name} marked present`:`${c.subject.name} marked absent`,!next);try{await cloudAttendance(c,d,next)}catch(e){setSync("Offline",true);toast("Saved locally. Cloud sync will retry.",true)}}
+function classCard(c,d){const k=key(c,d),marked=!!state.attendance[k],future=isFuture(d),blocked=future||!inSemester(d)||!!holiday(d);return `<article class="classcard ${marked?"marked":""}"><div class="time">${esc(fmtTime(c.start_time))}<small>${esc(fmtTime(c.end_time))}</small></div><div class="classinfo"><h3>${esc(c.subject.name)}</h3><p>${esc(c.subject.faculty)} · ${esc(c.subject.room)}</p><span class="tag">${c.subject.type}</span></div><button class="attbtn ${marked?"marked":""}" data-att="${esc(c.subject_id+"|"+c.start_time+"|"+c.end_time)}" data-date="${d}" ${blocked?"disabled":""}>${marked?"✓ Marked":future?"Future":"Mark attendance"}</button></article>`}
+function fmtTime(t){let [h,m]=t.split(":").map(Number);const ap=h>=12?"PM":"AM";h=h%12||12;return `${h}:${String(m).padStart(2,"0")} ${ap}`}
+function attach(){document.querySelectorAll("[data-att]").forEach(b=>b.onclick=()=>{const c=ttForDate(b.dataset.date).find(x=>x.subject_id===b.dataset.att.split("|")[0]&&x.start_time===b.dataset.att.split("|")[1]&&x.end_time===b.dataset.att.split("|")[2]);if(c)toggle(c,b.dataset.date)})}
+function renderDashboard(){
+  const d=todayIST(),cs=ttForDate(d),held=scheduledHeldThroughToday(),rs=recordedStats(),att=rs.attended,p=held?Math.min(100,att/held*100):0,target=Number(state.profile.attendance_target||75),u=upcoming(),below=subjects.filter(s=>{const x=statsForSubject(s.id);return x.held&&x.pct<target}).length;
+  const need=requiredToReach(att,held,target),safeMiss=canMiss(att,held,target);
+  const advice=p>=target
+    ? `You're above your ${target}% target. You can safely miss about ${safeMiss} upcoming class${safeMiss===1?"":"es"} and remain on target.`
+    : `Attend the next ${need} class${need===1?"":"es"} to reach ${target}%. Keep prioritizing subjects below target.`;$("page-dashboard").innerHTML=`<div class="hero"><div><div class="eyebrow">${esc(greeting())}, ${esc(state.profile.nickname)}</div><h1>Your day, at a glance.</h1><p>${esc(fmtDate(d))} · A calm view of today's classes and the attendance that matters.</p></div><div class="datebadge">${esc(fmtDate(d,{weekday:"short",month:"short",day:"numeric",year:"numeric"}))}</div></div><div class="grid4"><div class="card stat"><div class="label">Overall Attendance</div><div class="big">${p.toFixed(1)}%</div><div class="sub">Target: ${target}% · ${att}/${held} held · ${rs.recorded} recorded</div></div><div class="card stat"><div class="label">Classes Attended</div><div class="big">${att}</div><div class="sub">${rs.recorded} attendance entries recorded</div></div><div class="card stat"><div class="label">Current Streak</div><div class="big">🔥 ${streak()}</div><div class="sub">consecutive attended class days</div></div><div class="card stat"><div class="label">Below Target</div><div class="big">${below}</div><div class="sub">subjects need attention</div></div></div><div class="card health ${p<target?"bad":""}"><b>Attendance advice</b><br>${esc(advice)}<div class="history-note">${rs.recorded} classes have been explicitly recorded. Previous scheduled classes that are not recorded are treated as not attended until you mark them from Attendance → Previous days.</div></div><div class="sectionhead"><h2>Today's classes</h2><span class="sub">${cs.length} scheduled</span></div>${holiday(d)?`<div class="card"><b>Holiday — ${esc(holiday(d).title)}</b><p class="sub">No classes are counted today.</p></div>`:cs.length?`<div class="classes">${cs.map(c=>classCard(c,d)).join("")}</div>`:`<div class="card"><b>No classes scheduled today.</b><p class="sub">Enjoy the lighter day.</p></div>`}<div class="twocol" style="margin-top:14px"><div class="card"><div class="sectionhead" style="margin-top:0"><h2>Coming up</h2><span class="sub">nearest event</span></div>${u?`<div class="event"><strong>${esc(u.title)}</strong><span>${esc(fmtDate(u.date,{weekday:"long",month:"long",day:"numeric",year:"numeric"}))} · ${esc(u.type)}</span></div>`:`<div class="event"><strong>Nothing scheduled yet</strong><span>You're up to date.</span></div>`}</div><div class="card"><div class="sectionhead" style="margin-top:0"><h2>75% guide</h2></div><p class="sub">${p>=target?"You're safely on target.":"Your quickest route back is consistent attendance."}</p><b>${p.toFixed(1)}% → ${target}%</b></div></div>`;attach()}
+function streak(){let d=dateObj(todayIST()),n=0;for(let i=0;i<365;i++){const s=iso(d),cs=ttForDate(s);if(!cs.length||holiday(s)){d.setDate(d.getDate()-1);continue}if(cs.every(c=>state.attendance[key(c,s)])){n++;d.setDate(d.getDate()-1)}else break}return n}
+function renderTimetable(){const d=todayIST(),cs=ttForDate(d);$("page-timetable").innerHTML=`<div class="hero"><div><div class="eyebrow">Automatic daily timetable</div><h1>${esc(fmtDate(d,{weekday:"long"}))}.</h1><p>${esc(fmtDate(d,{month:"long",day:"numeric",year:"numeric"}))} · Always based on today's IST date.</p></div></div><div class="card"><div class="controls"><button class="filter active">TODAY</button><button class="filter" onclick="markAll()">Mark all attended</button></div><div class="history-note">The timetable always opens on today's IST date after refresh. To mark an earlier class, use <b>Attendance → Previous days</b>.</div></div><div class="sectionhead"><h2>Scheduled classes</h2><span class="sub">${cs.length} classes</span></div>${holiday(d)?`<div class="card"><b>Holiday — ${esc(holiday(d).title)}</b></div>`:`<div class="classes">${cs.map(c=>classCard(c,d)).join("")}</div>`}`;attach()}
+window.markAll=window.markAll=async()=>{const d=todayIST();if(isFuture(d)||!inSemester(d)||holiday(d)){toast("Classes cannot be marked for this date.",true);return}for(const c of ttForDate(d)){const k=key(c,d);if(!state.attendance[k])await toggle(c,d)}toast("✓ All scheduled classes marked")}
+function renderAttendance(){const d=state.attendanceDate||todayIST(),min=state.profile.semester_start,max=todayIST();const cs=ttForDate(d);const isToday=d===todayIST();$("page-attendance").innerHTML=`<div class="hero"><div><div class="eyebrow">Attendance</div><h1>${isToday?"Today's record.":"Previous day record."}</h1><p>${esc(fmtDate(d,{weekday:"long",month:"long",day:"numeric",year:"numeric"}))} · ${isToday?"Current day":"You can mark or correct an earlier day. Unrecorded past classes count as not attended until you record them."}.</p></div></div><div class="card datepicker-card"><div><b>Choose a class date</b><div class="history-note">Refresh always returns this screen to today's IST date.</div></div><input class="input" id="attendanceDatePicker" type="date" min="${esc(min)}" max="${esc(max)}" value="${esc(d)}"></div><div class="sectionhead"><h2>${isToday?"Today's classes":"Classes on "+esc(fmtDate(d,{weekday:"short",month:"short",day:"numeric"}))}</h2><span class="sub">${cs.length} scheduled</span></div>${holiday(d)?`<div class="card"><b>Holiday — ${esc(holiday(d).title)}</b><p class="sub">There are no classes to mark for this date.</p></div>`:cs.length?`<div class="classes">${cs.map(c=>classCard(c,d)).join("")}</div>`:`<div class="card"><b>No classes scheduled.</b><p class="sub">There is nothing to mark on this date.</p></div>`}`;const picker=$("attendanceDatePicker");if(picker)picker.onchange=()=>{state.attendanceDate=picker.value;renderAttendance();window.scrollTo({top:0,behavior:"smooth"})};attach()}
+function renderAnalytics(){
+  const target=Number(state.profile.attendance_target||75),held=scheduledHeldThroughToday(),rs=recordedStats(),att=rs.attended,p=held?Math.min(100,att/held*100):0,cl=Math.max(0,Math.min(100,p));const grad=`conic-gradient(var(--accent) 0 ${cl}%,rgba(127,135,160,.16) ${cl}% 100%)`;$("page-analytics").innerHTML=`<div class="hero"><div><div class="eyebrow">Analytics</div><h1>Know where you stand.</h1><p>Clean circular progress views and practical guidance toward ${target}%.</p></div></div><div class="card analytics-summary"><div class="progress-ring" style="background:${grad}"><div class="ring-content"><div class="ring-value">${p.toFixed(1)}%</div><span class="ring-label">overall</span></div></div><div class="summary-copy"><h2 style="margin:0 0 7px">Overall attendance</h2><p class="sub">${att} attended · ${held} held · ${rs.recorded} recorded · Target ${target}%</p><p>${p>=target?`You're on target. You can miss about ${canMiss(att,held,target)} more recorded class${canMiss(att,held,target)===1?"":"es"} and stay at ${target}%.`:`Attend the next ${requiredToReach(att,held,target)} recorded classes to reach ${target}%.`}</p></div></div><div class="sectionhead"><h2>Subject pulse</h2><span class="sub">Circular progress</span></div><div class="subjectgrid">${subjects.map(s=>{const x=statsForSubject(s.id),v=x.held?x.pct:0,c=Math.max(0,Math.min(100,v)),g=`conic-gradient(${v>=target?"var(--green)":v>=target-5?"var(--amber)":"var(--red)"} 0 ${c}%,rgba(127,135,160,.16) ${c}% 100%)`,need=requiredToReach(x.att,x.held,target),miss=canMiss(x.att,x.held,target);return `<div class="card subject"><div class="analytics-summary"><div class="progress-ring" style="width:94px;height:94px;background:${g}"><div class="ring-content"><div class="ring-value" style="font-size:20px">${x.held?v.toFixed(0):"—"}%</div><span class="ring-label">${x.held?"attendance":"no data"}</span></div></div><div class="summary-copy"><b>${esc(s.name)}</b><div class="sub">${esc(s.type)} · ${x.att}/${x.held} held · ${x.recorded} recorded</div><div class="history-note">${x.held?(v>=target?`You can miss about ${miss}.`:`Attend ${need} more to reach ${target}%.`):"Mark previous/current classes to build the graph."}</div></div></div></div>`}).join("")}</div>`}
+function renderCalendar(){const first=new Date(state.year,state.month,1),last=new Date(state.year,state.month+1,0),start=first.getDay(),cells=[];for(let i=0;i<start;i++)cells.push(`<div class="calcell muted"></div>`);for(let n=1;n<=last.getDate();n++){const d=iso(new Date(state.year,state.month,n)),cs=ttForDate(d),ev=events.find(e=>e.date===d),hol=holiday(d),today=d===todayIST();cells.push(`<div class="calcell ${today?"today":""}" onclick="openDate('${d}')"><div class="num">${n}</div>${cs.length?`<span class="caldot"></span>`:""}${ev?`<span class="caldot"></span>`:""}${hol?`<div class="sub">Holiday</div>`:""}</div>`)}$("page-calendar").innerHTML=`<div class="hero"><div><div class="eyebrow">Academic calendar</div><h1>${new Intl.DateTimeFormat("en-IN",{month:"long",year:"numeric"}).format(new Date(state.year,state.month,1))}.</h1><p>Classes, attendance, holidays and academic events.</p></div></div><div class="card"><div class="controls"><button class="filter" onclick="moveMonth(-1)">← Previous</button><button class="filter" onclick="goToday()">Today</button><button class="filter" onclick="moveMonth(1)">Next →</button></div><div style="height:14px"></div><div class="calendar">${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(x=>`<div class="sub" style="padding:4px 8px;font-weight:800">${x}</div>`).join("")}${cells.join("")}</div></div>`}
+window.moveMonth=n=>{state.month+=n;if(state.month<0){state.month=11;state.year--}if(state.month>11){state.month=0;state.year++}renderCalendar()}
+window.goToday=()=>{const d=dateObj(todayIST());state.month=d.getMonth();state.year=d.getFullYear();renderCalendar()}
+window.openDate=d=>{if(d>todayIST()){toast("Future dates cannot be edited.",true);return}state.attendanceDate=d;state.page="attendance";render();window.scrollTo({top:0,behavior:"smooth"})}
+function renderSettings(){ $("page-settings").innerHTML=`<div class="hero"><div><div class="eyebrow">Settings</div><h1>Your preferences.</h1><p>These settings follow your account across devices.</p></div></div><div class="card"><div class="formgrid"><div class="field"><label>Nickname</label><input class="input" id="setNick" value="${esc(state.profile.nickname)}"></div><div class="field"><label>Attendance target (%)</label><input class="input" id="setTarget" type="number" min="50" max="100" step="1" value="${state.profile.attendance_target}"></div><div class="field"><label>Semester start</label><input class="input" id="setStart" type="date" value="${state.profile.semester_start}"></div><div class="field"><label>Semester end</label><input class="input" id="setEnd" type="date" value="${state.profile.semester_end}"></div></div><div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap"><button class="primary" onclick="saveSettings()">Save settings</button><button class="danger" onclick="logout()">Log out</button></div></div><div class="card" style="margin-top:14px"><b>Account</b><p class="sub">${esc(state.user?.email||"")}</p><p class="sub">Cloud synchronization: ${esc($("syncText").textContent)}</p></div>`}
+window.saveSettings=async()=>{const n=$("setNick").value.trim()||"Student",t=Number($("setTarget").value),s=$("setStart").value,e=$("setEnd").value;if(!t||t<50||t>100||s>e){toast("Please enter valid settings.",true);return}state.profile={...state.profile,nickname:n,attendance_target:t,semester_start:s,semester_end:e};saveLocal();$("userName").textContent=n;try{await saveProfile();toast("✓ Settings saved")}catch(err){setSync("Offline",true);toast("Saved locally. Cloud sync failed.",true)}render()}
+function renderLeaderboard(){$("page-leaderboard").innerHTML=`<div class="hero"><div><div class="eyebrow">Leaderboard</div><h1>Attendance, with a little fun.</h1><p>Private-by-default. Only your own nickname is shown here.</p></div></div><div class="card"><div class="tablewrap"><table class="table"><thead><tr><th>Rank</th><th>Student</th><th>Attendance</th><th>Classes</th><th>Streak</th></tr></thead><tbody><tr><td>—</td><td><b>${esc(state.profile.nickname)}</b></td><td>${pct().toFixed(1)}%</td><td>${Object.keys(state.attendance).length}</td><td>🔥 ${streak()}</td></tr></tbody></table></div><p class="sub" style="margin-top:14px">A real shared leaderboard requires an explicitly enabled public leaderboard table. ClassTrack never exposes private attendance records to other users.</p></div>`}
+function render(){document.body.classList.toggle("dark",state.theme==="dark");$("themeBtn").textContent=state.theme==="dark"?"☼":"◐";$("userName").textContent=state.profile.nickname||"Student";["dashboard","timetable","attendance","calendar","analytics","leaderboard","settings"].forEach(p=>{const el=$("page-"+p);if(el)el.classList.toggle("active",state.page===p)});document.querySelectorAll("[data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===state.page));if(state.page==="dashboard")renderDashboard();if(state.page==="timetable")renderTimetable();if(state.page==="attendance")renderAttendance();if(state.page==="calendar")renderCalendar();if(state.page==="analytics")renderAnalytics();if(state.page==="leaderboard")renderLeaderboard();if(state.page==="settings")renderSettings()}
+function nav(e){const b=e.target.closest("[data-page]");if(!b)return;if(b.dataset.page==="attendance"&&!state.attendanceDate)state.attendanceDate=todayIST();state.page=b.dataset.page;render();window.scrollTo({top:0,behavior:"smooth"})}
+$("sideNav").onclick=nav;$("mobileNav").onclick=nav;
+$("themeBtn").onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";localStorage.setItem("ct_theme",state.theme);render()};
+async function logout(){
+  try{await sb.auth.signOut()}catch(e){console.error(e)}
+  state.session=null;state.user=null;state.attendance={};
+  $("appView").classList.add("hidden");$("authView").classList.remove("hidden");
+  authMode(false);$("authForm").reset();$("authMsg").textContent="Cloud authentication ready.";
+  toast("Logged out");
+}
+$("logoutBtn").onclick=logout;window.logout=logout;
+function showApp(){loadLocal();$("authView").classList.add("hidden");$("appView").classList.remove("hidden");render()}
+$("loginTab").onclick=()=>authMode(false);$("signupTab").onclick=()=>authMode(true);
+let signup=false;function authMode(v){signup=v;$("loginTab").classList.toggle("active",!v);$("signupTab").classList.toggle("active",v);$("nickField").classList.toggle("hidden",!v);$("confirmField").classList.toggle("hidden",!v);$("authTitle").textContent=v?"Create your account.":"Welcome back.";$("authSub").textContent=v?"Create one account and keep attendance synced everywhere.":"Sign in to keep your attendance synchronized across devices.";$("authSubmit").textContent=v?"Create account":"Login";$("forgot").classList.toggle("hidden",v);$("password").autocomplete=v?"new-password":"current-password";$("authMsg").textContent="Cloud authentication ready."; $("authMsg").classList.remove("error")}
+$("authForm").onsubmit=async e=>{
+  e.preventDefault();
+  const email=$("email").value.trim().toLowerCase(),pass=$("password").value;
+  if(!email||!pass)return;
+  try{
+    $("authSubmit").disabled=true;
+    $("authMsg").textContent=signup?"Creating account…":"Signing in…";
+    await cloudReady();
+    if(signup){
+      if(pass!==$("confirm").value)throw new Error("Passwords do not match.");
+      const nickname=$("nickname").value.trim()||"Student";
+      const {data,error}=await sb.auth.signUp({
+        email,password:pass,
+        options:{data:{nickname}}
+      });
+      if(error)throw error;
+      if(!data.session){
+        $("authMsg").textContent="Account created. Check your email to confirm the account, then log in.";
+        toast("Account created — check your email");
+        return;
+      }
+      state.session=data.session;state.user=data.user;
+    }else{
+      const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+      if(error)throw error;
+      state.session=data.session;state.user=data.user;
+    }
+    state.attendanceDate=todayIST();
+    loadLocal();
+    try{await loadCloud()}catch(err){
+      setSync("Offline",true);
+      console.error("Cloud data load failed:",err);
+      toast("Signed in, but cloud data could not be loaded: "+err.message,true);
+    }
+    showApp();
+    toast("✓ Login successful");
+  }catch(err){
+    console.error("Auth error:",err);
+    $("authMsg").textContent=err.message||"Authentication failed.";
+    toast(err.message||"Authentication failed",true);
+  }finally{$("authSubmit").disabled=false}
+};
+$("forgot").onclick=async()=>{
+  const email=$("email").value.trim().toLowerCase();
+  if(!email){$("authMsg").textContent="Enter your email first.";return}
+  try{
+    await cloudReady();
+    const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.href});
+    if(error)throw error;
+    toast("Password reset email sent");
+    $("authMsg").textContent="Check your email for the password reset link.";
+  }catch(e){$("authMsg").textContent=e.message||"Could not send reset email.";toast(e.message||"Could not send reset email.",true)}
+};
+async function boot(){
+  state.attendanceDate=todayIST(); state._lastDay=todayIST();
+  const now=dateObj(todayIST());state.month=now.getMonth();state.year=now.getFullYear();
+  loadLocal();
+  authMode(false);
+  try{
+    await cloudReady();
+    $("authMsg").textContent="Cloud authentication ready.";
+  }catch(e){
+    $("authMsg").textContent="Cloud connection unavailable. Check your internet connection.";
+    console.error("Supabase connection:",e);
+  }
+  const {data:{session}}=await sb.auth.getSession();
+  if(session?.access_token){
+    state.session=session;state.user=session.user;
+    try{
+      await loadCloud();
+      showApp();
+      render();
+      return;
+    }catch(e){
+      setSync("Offline",true);
+      console.error("Initial cloud load:",e);
+      showApp();
+      render();
+      toast("Signed in. Cloud data is temporarily unavailable.",true);
+      return;
+    }
+  }
+}
+sb.auth.onAuthStateChange((event,session)=>{
+  if(session){state.session=session;state.user=session.user}
+  if(event==="SIGNED_OUT"){state.session=null;state.user=null}
+});
+setInterval(()=>{if(state.user){const d=todayIST();if(state._lastDay!==d){state._lastDay=d;render()}else if(state.page==="dashboard")renderDashboard()}},30000);
+boot();
+})();
+</script>
+</body>
+</html>
