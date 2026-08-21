@@ -403,7 +403,9 @@ function startAttendanceSync(){
       await loadCloud();
     }catch(e){
       console.warn("Cloud sync retry:",e);
-      setSync("Offline",true);
+      // A single failed background poll is not enough to declare the
+      // account offline. Keep the last known sync state and retry.
+      setSync("Syncing…");
     }
   },5000);
 }
@@ -444,47 +446,85 @@ async function cloudAttendance(c,d,value){
   const k=c.subject_id+"|"+c.start_time+"|"+c.end_time;
   setSync("Syncing…");
   cloudWriteInProgress=true;
+
   try{
     const uid=encodeURIComponent(state.user.id);
     const ck=encodeURIComponent(k);
     const cd=encodeURIComponent(d);
 
-    const existing=await api(
-      "/attendance?select=id&user_id=eq."+uid+
+    // First look for the exact cloud row.
+    let existing=await api(
+      "/attendance?select=id,class_key,class_date,attended&user_id=eq."+uid+
       "&class_key=eq."+ck+
       "&class_date=eq."+cd+
-      "&limit=1"
+      "&limit=20"
     );
 
     if(existing && existing.length){
+      // Update the first exact row.
       await api("/attendance?id=eq."+encodeURIComponent(existing[0].id),{
         method:"PATCH",
         headers:{"Prefer":"return=minimal"},
         body:{attended:!!value}
       });
-    }else{
-      await api("/attendance",{
-        method:"POST",
-        headers:{"Prefer":"return=minimal"},
-        body:{
-          user_id:state.user.id,
-          class_key:k,
-          class_date:d,
-          attended:!!value
+
+      // If an older database contains duplicate exact rows, update all of
+      // them so this class cannot disagree between devices.
+      if(existing.length>1){
+        for(let i=1;i<existing.length;i++){
+          await api("/attendance?id=eq."+encodeURIComponent(existing[i].id),{
+            method:"PATCH",
+            headers:{"Prefer":"return=minimal"},
+            body:{attended:!!value}
+          });
         }
-      });
+      }
+    }else{
+      try{
+        await api("/attendance",{
+          method:"POST",
+          headers:{"Prefer":"return=minimal"},
+          body:{
+            user_id:state.user.id,
+            class_key:k,
+            class_date:d,
+            attended:!!value
+          }
+        });
+      }catch(insertError){
+        // Some older ClassTrack databases can contain a row that is hidden
+        // by a different/legacy key. Re-read the exact user/date before
+        // failing, then update it if it exists.
+        const retry=await api(
+          "/attendance?select=id,class_key,class_date,attended&user_id=eq."+uid+
+          "&class_date=eq."+cd+
+          "&limit=100"
+        );
+        const matching=(retry||[]).filter(r=>String(r.class_key||"")===k);
+
+        if(!matching.length) throw insertError;
+
+        for(const row of matching){
+          await api("/attendance?id=eq."+encodeURIComponent(row.id),{
+            method:"PATCH",
+            headers:{"Prefer":"return=minimal"},
+            body:{attended:!!value}
+          });
+        }
+      }
     }
 
+    // Final authoritative verification.
     const verify=await api(
-      "/attendance?select=id,class_key,class_date,attended"+
-      "&user_id=eq."+uid+
+      "/attendance?select=id,class_key,class_date,attended&user_id=eq."+uid+
       "&class_key=eq."+ck+
       "&class_date=eq."+cd+
-      "&limit=1"
+      "&limit=20"
     );
 
-    if(!verify || !verify.length || !!verify[0].attended!==!!value){
-      throw new Error("Attendance was not confirmed by Supabase.");
+    const matching=(verify||[]).filter(r=>String(r.class_key||"")===k);
+    if(!matching.length || matching.some(r=>!!r.attended!==!!value)){
+      throw new Error("Supabase did not confirm this attendance record.");
     }
 
     state.attendance[key(c,d)]=!!value;
