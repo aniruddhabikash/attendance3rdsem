@@ -299,7 +299,7 @@ async function loadCloud(){
 
   // Load attendance belonging only to the signed-in user.
   const rows = await api(
-    "/attendance?select=timetable_key,class_date,attended&user_id=eq."+encodeURIComponent(state.user.id)
+    "/attendance?select=class_key,class_date,attended&user_id=eq."+encodeURIComponent(state.user.id)
   );
 
   const merged = {...state.attendance};
@@ -372,14 +372,14 @@ async function cloudAttendance(c,d,value){
 
   const existing=await api(
     "/attendance?select=id&user_id=eq."+uid+
-    "&timetable_key=eq."+tk+
+    "&class_key=eq."+tk+
     "&class_date=eq."+cd+
     "&limit=1"
   );
 
   const body={
     user_id:state.user.id,
-    timetable_key:k,
+    class_key:k,
     class_date:d,
     attended:!!value
   };
