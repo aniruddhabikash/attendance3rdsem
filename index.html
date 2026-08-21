@@ -253,9 +253,19 @@ function scheduledSubjectHeldThroughToday(subjectId){
   }
   return held;
 }
+function attendanceEntryInfo(k){
+  const parts=String(k).split("|");
+  if(parts.length!==4)return null;
+  const [subjectId,start,end,date]=parts;
+  const c=ttForDate(date).find(x=>x.subject_id===subjectId&&x.start_time===start&&x.end_time===end);
+  return c?{subjectId,start,end,date}:null;
+}
+function validAttendanceEntries(){
+  return Object.entries(state.attendance).filter(([k])=>!!attendanceEntryInfo(k));
+}
 function recordedStats(){
   let recorded=0,attended=0;
-  for(const v of Object.values(state.attendance)){
+  for(const [k,v] of validAttendanceEntries()){
     recorded++;
     if(v)attended++;
   }
@@ -263,13 +273,13 @@ function recordedStats(){
 }
 function pct(){
   const held=scheduledHeldThroughToday();
-  const att=Object.values(state.attendance).filter(Boolean).length;
+  const att=validAttendanceEntries().filter(([,v])=>!!v).length;
   return held?Math.min(100,att/held*100):0;
 }
 function statsForSubject(id){
   const held=scheduledSubjectHeldThroughToday(id);
   let att=0,recorded=0;
-  for(const [k,v] of Object.entries(state.attendance)){
+  for(const [k,v] of validAttendanceEntries()){
     if(k.startsWith(id+"|")){
       recorded++;
       if(v)att++;
@@ -434,7 +444,6 @@ async function cloudAttendance(c,d,value){
   const k=c.subject_id+"|"+c.start_time+"|"+c.end_time;
   setSync("Syncing…");
   cloudWriteInProgress=true;
-
   try{
     const uid=encodeURIComponent(state.user.id);
     const ck=encodeURIComponent(k);
@@ -466,7 +475,6 @@ async function cloudAttendance(c,d,value){
       });
     }
 
-    // Verify the exact row from Supabase before reporting success.
     const verify=await api(
       "/attendance?select=id,class_key,class_date,attended"+
       "&user_id=eq."+uid+
@@ -476,9 +484,12 @@ async function cloudAttendance(c,d,value){
     );
 
     if(!verify || !verify.length || !!verify[0].attended!==!!value){
-      throw new Error("Supabase accepted the request but the attendance could not be verified.");
+      throw new Error("Attendance was not confirmed by Supabase.");
     }
 
+    state.attendance[key(c,d)]=!!value;
+    saveLocal();
+    render();
     setSync("Synced");
   }finally{
     cloudWriteInProgress=false;
