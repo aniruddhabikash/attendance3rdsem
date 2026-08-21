@@ -180,6 +180,8 @@ const sb = createClient(SUPABASE_URL, KEY, {
     detectSessionInUrl: true
   }
 });
+let attendanceChannel = null;
+let cloudWriteBusy = false;
 const subjects=[
 ["BCST2101","Formal Language and Automata Theory","THEORY","Dr. Chayanika Sarmah","B403"],
 ["BCST2102","Computer Organization & Architecture","THEORY","Ms. Anindita Das","B403"],
@@ -297,32 +299,63 @@ async function cloudReady(){
 async function loadCloud(){
   if(!state.user) return;
 
-  // Load attendance belonging only to the signed-in user.
-  const rows = await api(
-    "/attendance?select=timetable_key,class_date,attended&user_id=eq."+encodeURIComponent(state.user.id)
-  );
+  const uid=encodeURIComponent(state.user.id);
+  const rows=await api("/attendance?select=id,timetable_key,class_date,attended&user_id=eq."+uid);
 
-  const merged = {...state.attendance};
+  // Once the cloud read succeeds, cloud is authoritative for this account.
+  const cloudAttendance={};
   for(const row of (rows||[])){
-    if(!row.timetable_key || !row.class_date) continue;
-    merged[row.timetable_key+"|"+row.class_date] = !!row.attended;
+    if(row.timetable_key && row.class_date){
+      cloudAttendance[row.timetable_key+"|"+row.class_date]=!!row.attended;
+    }
   }
-  state.attendance = merged;
+  state.attendance=cloudAttendance;
 
-  // Keep profile preferences in Supabase Auth user metadata so no extra
-  // database table is required for nickname/settings synchronization.
-  const meta = state.user.user_metadata || {};
-  state.profile = {
+  const meta=state.user.user_metadata||{};
+  state.profile={
     ...state.profile,
-    nickname: meta.nickname || state.profile.nickname || "Student",
-    attendance_target: Number(meta.attendance_target || state.profile.attendance_target || 75),
-    semester_start: meta.semester_start || state.profile.semester_start || "2026-07-20",
-    semester_end: meta.semester_end || state.profile.semester_end || "2026-12-15"
+    nickname:meta.nickname||state.profile.nickname||"Student",
+    attendance_target:Number(meta.attendance_target||state.profile.attendance_target||75),
+    semester_start:meta.semester_start||state.profile.semester_start||"2026-07-20",
+    semester_end:meta.semester_end||state.profile.semester_end||"2026-12-15"
   };
 
   saveLocal();
-  $("userName").textContent = state.profile.nickname || "Student";
+  $("userName").textContent=state.profile.nickname||"Student";
   setSync("Synced");
+  subscribeAttendanceRealtime();
+}
+function subscribeAttendanceRealtime(){
+  if(!state.user)return;
+
+  if(attendanceChannel){
+    try{sb.removeChannel(attendanceChannel)}catch(e){}
+    attendanceChannel=null;
+  }
+
+  const uid=state.user.id;
+  attendanceChannel=sb.channel("classtrack-attendance-"+uid)
+    .on("postgres_changes",{
+      event:"*",
+      schema:"public",
+      table:"attendance",
+      filter:"user_id=eq."+uid
+    },payload=>{
+      const row=payload.new||payload.old;
+      if(!row?.timetable_key||!row?.class_date)return;
+
+      const k=row.timetable_key+"|"+row.class_date;
+      if(payload.eventType==="DELETE") delete state.attendance[k];
+      else state.attendance[k]=!!row.attended;
+
+      saveLocal();
+      render();
+      setSync("Synced");
+    })
+    .subscribe(status=>{
+      if(status==="SUBSCRIBED")setSync("Synced");
+      else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT")setSync("Offline",true);
+    });
 }
 
 async function saveProfile(){
@@ -361,44 +394,32 @@ function loadLocal(){
 async function cloudAttendance(c,d,value){
   const k=c.subject_id+"|"+c.start_time+"|"+c.end_time;
   setSync("Syncing…");
+  cloudWriteBusy=true;
+  try{
+    const uid=encodeURIComponent(state.user.id);
+    const tk=encodeURIComponent(k);
+    const cd=encodeURIComponent(d);
+    const existing=await api("/attendance?select=id&user_id=eq."+uid+"&timetable_key=eq."+tk+"&class_date=eq."+cd+"&limit=1");
 
-  // Do not depend on a specific PostgreSQL ON CONFLICT constraint.
-  // Some older ClassTrack databases have a different unique key.
-  // Instead, find this user's exact class/date row and update it,
-  // or insert it if it does not exist.
-  const uid=encodeURIComponent(state.user.id);
-  const tk=encodeURIComponent(k);
-  const cd=encodeURIComponent(d);
+    if(existing&&existing.length){
+      await api("/attendance?id=eq."+encodeURIComponent(existing[0].id),{
+        method:"PATCH",
+        headers:{"Prefer":"return=minimal"},
+        body:{attended:!!value}
+      });
+    }else{
+      await api("/attendance",{
+        method:"POST",
+        headers:{"Prefer":"return=minimal"},
+        body:{user_id:state.user.id,timetable_key:k,class_date:d,attended:!!value}
+      });
+    }
 
-  const existing=await api(
-    "/attendance?select=id&user_id=eq."+uid+
-    "&timetable_key=eq."+tk+
-    "&class_date=eq."+cd+
-    "&limit=1"
-  );
-
-  const body={
-    user_id:state.user.id,
-    timetable_key:k,
-    class_date:d,
-    attended:!!value
-  };
-
-  if(existing && existing.length){
-    await api("/attendance?id=eq."+encodeURIComponent(existing[0].id),{
-      method:"PATCH",
-      headers:{"Prefer":"return=minimal"},
-      body:{attended:!!value}
-    });
-  }else{
-    await api("/attendance",{
-      method:"POST",
-      headers:{"Prefer":"return=minimal"},
-      body
-    });
+    // Confirm the write from the server before claiming Synced.
+    await loadCloud();
+  }finally{
+    cloudWriteBusy=false;
   }
-
-  setSync("Synced");
 }
 async function toggle(c,d){if(!state.user)return;if(!inSemester(d)){toast("This date is outside the semester.",true);return}if(isFuture(d)){toast("Future classes cannot be marked.",true);return}if(holiday(d)){toast("Holiday — No classes.",true);return}const k=key(c,d),next=!state.attendance[k];state.attendance[k]=next;saveLocal();render();toast(next?`✓ ${c.subject.name} marked present`:`${c.subject.name} marked absent`,!next);try{await cloudAttendance(c,d,next)}catch(e){setSync("Offline",true);toast("Saved locally. Cloud sync will retry.",true)}}
 function classCard(c,d){const k=key(c,d),marked=!!state.attendance[k],future=isFuture(d),blocked=future||!inSemester(d)||!!holiday(d);return `<article class="classcard ${marked?"marked":""}"><div class="time">${esc(fmtTime(c.start_time))}<small>${esc(fmtTime(c.end_time))}</small></div><div class="classinfo"><h3>${esc(c.subject.name)}</h3><p>${esc(c.subject.faculty)} · ${esc(c.subject.room)}</p><span class="tag">${c.subject.type}</span></div><button class="attbtn ${marked?"marked":""}" data-att="${esc(c.subject_id+"|"+c.start_time+"|"+c.end_time)}" data-date="${d}" ${blocked?"disabled":""}>${marked?"✓ Marked":future?"Future":"Mark attendance"}</button></article>`}
@@ -471,6 +492,10 @@ $("sideNav").onclick=nav;$("mobileNav").onclick=nav;
 $("themeBtn").onclick=()=>{state.theme=state.theme==="dark"?"light":"dark";localStorage.setItem("ct_theme",state.theme);render()};
 async function logout(){
   try{await sb.auth.signOut()}catch(e){console.error(e)}
+  if(attendanceChannel){
+    try{await sb.removeChannel(attendanceChannel)}catch(e){}
+    attendanceChannel=null;
+  }
   state.session=null;state.user=null;state.attendance={};
   $("appView").classList.add("hidden");$("authView").classList.remove("hidden");
   authMode(false);$("authForm").reset();$("authMsg").textContent="Cloud authentication ready.";
