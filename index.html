@@ -420,9 +420,37 @@ async function renderLeaderboard(){
   const root=$("page-leaderboard");
   root.innerHTML=`<div class="hero"><div><div class="eyebrow">Leaderboard</div><h1>Attendance, with a little fun.</h1><p>Shared with everyone using ClassTrack. Only nickname and attendance stats are shown.</p></div></div><div class="card"><div class="tablewrap"><table class="table"><thead><tr><th>Rank</th><th>Student</th><th>Attendance</th><th>Classes</th><th>Streak</th></tr></thead><tbody><tr><td colspan="5" class="sub">Loading leaderboard…</td></tr></tbody></table></div></div>`;
   try{
-    const rows=await api("/rpc/get_class_track_leaderboard",{method:"POST",body:{}});
-    const me=state.user?.id;
-    root.querySelector("tbody").innerHTML=(rows||[]).map((r,i)=>{
+    let rows=await api("/rpc/get_class_track_leaderboard",{method:"POST",body:{}});
+    rows=Array.isArray(rows)?rows.map(r=>({...r})):[];
+
+    // Keep the shared leaderboard cloud-based for everyone, but make the
+    // currently signed-in student's displayed stats agree with the exact
+    // dashboard calculation. This is important when this browser has
+    // attendance entries that have not finished syncing yet.
+    const myNickname=String(state.profile.nickname||"Student");
+    const myHeld=scheduledHeldThroughToday();
+    const myStats=recordedStats();
+    const myAttendance=myHeld?Math.min(100,myStats.attended/myHeld*100):0;
+
+    let mine=rows.find(r=>String(r.student||"")===myNickname);
+    if(mine){
+      mine.attendance=myAttendance;
+      mine.classes=myStats.attended;
+      mine._local=true;
+    }else if(state.user){
+      rows.push({
+        student:myNickname,
+        attendance:myAttendance,
+        classes:myStats.attended,
+        streak:streak(),
+        _local:true
+      });
+    }
+
+    rows.sort((a,b)=>Number(b.attendance||0)-Number(a.attendance||0));
+    rows.forEach((r,i)=>r.rank=i+1);
+
+    root.querySelector("tbody").innerHTML=rows.map((r,i)=>{
       const student=String(r.student||"Student");
       return `<tr><td>${r.rank||i+1}</td><td><b>${esc(student)}</b></td><td>${Number(r.attendance||0).toFixed(1)}%</td><td>${Number(r.classes||0)}</td><td>🔥 ${Number(r.streak||0)}</td></tr>`;
     }).join("") || `<tr><td colspan="5" class="sub">No registered students yet.</td></tr>`;
