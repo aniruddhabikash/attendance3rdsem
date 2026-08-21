@@ -355,16 +355,43 @@ function loadLocal(){
 async function cloudAttendance(c,d,value){
   const k=c.subject_id+"|"+c.start_time+"|"+c.end_time;
   setSync("Syncing…");
-  await api("/attendance?on_conflict=user_id,timetable_key,class_date",{
-    method:"POST",
-    headers:{"Prefer":"resolution=merge-duplicates,return=minimal"},
-    body:{
-      user_id:state.user.id,
-      timetable_key:k,
-      class_date:d,
-      attended:!!value
-    }
-  });
+
+  // Do not depend on a specific PostgreSQL ON CONFLICT constraint.
+  // Some older ClassTrack databases have a different unique key.
+  // Instead, find this user's exact class/date row and update it,
+  // or insert it if it does not exist.
+  const uid=encodeURIComponent(state.user.id);
+  const tk=encodeURIComponent(k);
+  const cd=encodeURIComponent(d);
+
+  const existing=await api(
+    "/attendance?select=id&user_id=eq."+uid+
+    "&timetable_key=eq."+tk+
+    "&class_date=eq."+cd+
+    "&limit=1"
+  );
+
+  const body={
+    user_id:state.user.id,
+    timetable_key:k,
+    class_date:d,
+    attended:!!value
+  };
+
+  if(existing && existing.length){
+    await api("/attendance?id=eq."+encodeURIComponent(existing[0].id),{
+      method:"PATCH",
+      headers:{"Prefer":"return=minimal"},
+      body:{attended:!!value}
+    });
+  }else{
+    await api("/attendance",{
+      method:"POST",
+      headers:{"Prefer":"return=minimal"},
+      body
+    });
+  }
+
   setSync("Synced");
 }
 async function toggle(c,d){if(!state.user)return;if(!inSemester(d)){toast("This date is outside the semester.",true);return}if(isFuture(d)){toast("Future classes cannot be marked.",true);return}if(holiday(d)){toast("Holiday — No classes.",true);return}const k=key(c,d),next=!state.attendance[k];state.attendance[k]=next;saveLocal();render();toast(next?`✓ ${c.subject.name} marked present`:`${c.subject.name} marked absent`,!next);try{await cloudAttendance(c,d,next)}catch(e){setSync("Offline",true);toast("Saved locally. Cloud sync will retry.",true)}}
