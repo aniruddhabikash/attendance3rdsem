@@ -177,7 +177,10 @@ const sb = createClient(SUPABASE_URL, KEY, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true
+    detectSessionInUrl: true,
+    storage: window.localStorage,
+    storageKey: "classtrack_supabase_auth",
+    flowType: "pkce"
   }
 });
 let attendanceChannel=null;
